@@ -1,0 +1,121 @@
+const fs = require('fs')
+const path = require('path')
+const util = require('util')
+const os = require('os')
+const _ = require('lodash')
+const program = require('commander')
+const json = require('./package.json')
+
+const readdir = util.promisify(fs.readdir)
+const readFile = util.promisify((filename, callback) =>
+	fs.readFile(filename, 'utf-8', callback)
+)
+const writeFile = util.promisify(fs.writeFile)
+
+async function processData(LAMP_MODE) {
+	const OVERLAP_COUNT = 30
+	const DIRECTORY = 'data'
+	const BUILD_DIRECTORY = 'dist'
+
+	let regexp
+	if (LAMP_MODE) {
+		regexp = /(lamp)_(\d*)nm_100ms_100acc_ppol_Forward_1loop_1500mA_0\.txt/
+	} else {
+		regexp = /ris(\d*)_(\d*)nm_100ms_100acc_ppol_Forward_1loop_1500mA_0\.txt/
+	}
+
+	const data = new Map()
+
+	const files = await readdir(DIRECTORY)
+
+	const neededFiles = files.filter(filename => regexp.test(filename))
+	await Promise.all(
+		neededFiles.map(async filename => {
+			const file = await readFile(
+				path.resolve(__dirname, DIRECTORY, filename)
+			)
+
+			const array = file
+				.split(os.EOL)
+				.map(str => parseInt(str, 10))
+				.filter(value => !_.isNaN(value))
+
+			let [, ris, wavelength] = regexp.exec(filename)
+			if (!LAMP_MODE) {
+				;[ris, wavelength] = [ris, wavelength].map(str =>
+					parseInt(str, 10)
+				)
+			} else {
+				wavelength = parseInt(wavelength, 10)
+			}
+
+			if (!data.has(ris)) {
+				data.set(ris, new Map())
+			}
+			data.get(ris).set(wavelength, array)
+		})
+	)
+
+	data.forEach(async (map, ris) => {
+		const rawData = [...map.keys()].sort().map(key => map.get(key))
+
+		const formattedData = rawData.reduce((accumulator, array) => {
+			if (accumulator.length === 0) {
+				accumulator.push(...array)
+			} else {
+				const previous = _.takeRight(accumulator, OVERLAP_COUNT)
+				const current = _.take(array, OVERLAP_COUNT)
+
+				let distance = 0
+				for (let i = 0; i < OVERLAP_COUNT; i++) {
+					if (!_.isNumber(previous[i]) || !_.isNumber(current[i])) {
+						console.log(previous[i], current[i], i, ris)
+					}
+					distance += previous[i] - current[i]
+				}
+				distance = distance / OVERLAP_COUNT
+
+				const formatted = _.takeRight(
+					array,
+					array.length - OVERLAP_COUNT
+				).map(value => value + distance)
+				accumulator.push(...formatted)
+			}
+
+			return accumulator
+		}, [])
+
+		const formattedFile = formattedData.join(os.EOL)
+
+		if (!fs.existsSync(BUILD_DIRECTORY)) {
+			fs.mkdirSync(BUILD_DIRECTORY)
+		}
+
+		await writeFile(path.join(BUILD_DIRECTORY, `${ris}.txt`), formattedFile)
+	})
+}
+
+async function main() {
+	program
+		.version(json.version)
+		.option(
+			'-m --mode <mode>',
+			'Working mode. Allowed values: lamp, ris, all. Default: all',
+			'all'
+		)
+		.parse(process.argv)
+
+	if (program.mode === 'all') {
+		await processData(false)
+		await processData(true)
+	} else {
+		if (program.mode === 'ris') {
+			await processData(false)
+		}
+		if (program.mode === 'lamp') {
+			await processData(true)
+		}
+	}
+}
+
+main()
