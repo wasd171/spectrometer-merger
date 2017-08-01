@@ -89,6 +89,7 @@ async function processData(LAMP_MODE) {
 					const diff = formattedData[i] + distance - rawData[i]
 					sum += diff * diff
 				}
+
 				return sum
 			}
 
@@ -104,6 +105,10 @@ async function processData(LAMP_MODE) {
 			await writeFile(
 				path.join(BUILD_DIRECTORY, `${ris}.txt`),
 				formattedFile
+			)
+			await writeFile(
+				path.join(BUILD_DIRECTORY, `${ris}_raw.txt`),
+				rawData.join(os.EOL)
 			)
 		})
 	)
