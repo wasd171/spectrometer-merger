@@ -13,7 +13,7 @@ const readFile = util.promisify((filename, callback) =>
 const writeFile = util.promisify(fs.writeFile)
 
 async function processData(LAMP_MODE) {
-	const OVERLAP_COUNT = 100
+	const OVERLAP_COUNT = 104
 	const DIRECTORY = 'data'
 	const BUILD_DIRECTORY = 'dist'
 
