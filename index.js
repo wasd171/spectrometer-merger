@@ -96,15 +96,13 @@ async function processData(LAMP_MODE) {
 			const distance = minimize(squares)
 			formattedData = formattedData.map(value => value + distance)
 
-			const formattedFile = formattedData.join(os.EOL)
-
 			if (!fs.existsSync(BUILD_DIRECTORY)) {
 				fs.mkdirSync(BUILD_DIRECTORY)
 			}
 
 			await writeFile(
 				path.join(BUILD_DIRECTORY, `${ris}.txt`),
-				formattedFile
+				formattedData.join(os.EOL)
 			)
 			await writeFile(
 				path.join(BUILD_DIRECTORY, `${ris}_raw.txt`),
