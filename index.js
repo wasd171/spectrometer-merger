@@ -56,43 +56,51 @@ async function processData(LAMP_MODE) {
 		})
 	)
 
-	data.forEach(async (map, ris) => {
-		const rawData = [...map.keys()].sort().map(key => map.get(key))
+	await Promise.all(
+		[...data.entries()].map(async ([ris, map]) => {
+			const rawData = [...map.keys()].sort().map(key => map.get(key))
 
-		const formattedData = rawData.reduce((accumulator, array) => {
-			if (accumulator.length === 0) {
-				accumulator.push(...array)
-			} else {
-				const previous = _.takeRight(accumulator, OVERLAP_COUNT)
-				const current = _.take(array, OVERLAP_COUNT)
+			const formattedData = rawData.reduce((accumulator, array) => {
+				if (accumulator.length === 0) {
+					accumulator.push(...array)
+				} else {
+					const previous = _.takeRight(accumulator, OVERLAP_COUNT)
+					const current = _.take(array, OVERLAP_COUNT)
 
-				let distance = 0
-				for (let i = 0; i < OVERLAP_COUNT; i++) {
-					if (!_.isNumber(previous[i]) || !_.isNumber(current[i])) {
-						console.log(previous[i], current[i], i, ris)
+					let distance = 0
+					for (let i = 0; i < OVERLAP_COUNT; i++) {
+						if (
+							!_.isNumber(previous[i]) ||
+							!_.isNumber(current[i])
+						) {
+							console.log(previous[i], current[i], i, ris)
+						}
+						distance += previous[i] - current[i]
 					}
-					distance += previous[i] - current[i]
-				}
-				distance = distance / OVERLAP_COUNT
+					distance = distance / OVERLAP_COUNT
 
-				const formatted = _.takeRight(
-					array,
-					array.length - OVERLAP_COUNT
-				).map(value => value + distance)
-				accumulator.push(...formatted)
+					const formatted = _.takeRight(
+						array,
+						array.length - OVERLAP_COUNT
+					).map(value => value + distance)
+					accumulator.push(...formatted)
+				}
+
+				return accumulator
+			}, [])
+
+			const formattedFile = formattedData.join(os.EOL)
+
+			if (!fs.existsSync(BUILD_DIRECTORY)) {
+				fs.mkdirSync(BUILD_DIRECTORY)
 			}
 
-			return accumulator
-		}, [])
-
-		const formattedFile = formattedData.join(os.EOL)
-
-		if (!fs.existsSync(BUILD_DIRECTORY)) {
-			fs.mkdirSync(BUILD_DIRECTORY)
-		}
-
-		await writeFile(path.join(BUILD_DIRECTORY, `${ris}.txt`), formattedFile)
-	})
+			await writeFile(
+				path.join(BUILD_DIRECTORY, `${ris}.txt`),
+				formattedFile
+			)
+		})
+	)
 }
 
 async function main() {
