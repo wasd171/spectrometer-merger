@@ -13,7 +13,7 @@ const readFile = util.promisify((filename, callback) =>
 const writeFile = util.promisify(fs.writeFile)
 
 async function processData(LAMP_MODE) {
-	const OVERLAP_COUNT = 30
+	const OVERLAP_COUNT = 100
 	const DIRECTORY = 'data'
 	const BUILD_DIRECTORY = 'dist'
 
@@ -79,10 +79,7 @@ async function processData(LAMP_MODE) {
 					}
 					distance = distance / OVERLAP_COUNT
 
-					const formatted = _.takeRight(
-						array,
-						array.length - OVERLAP_COUNT
-					).map(value => value + distance)
+					const formatted = array.map(value => value + distance)
 					accumulator.push(...formatted)
 				}
 
