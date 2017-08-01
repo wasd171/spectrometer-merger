@@ -69,12 +69,6 @@ async function processData(LAMP_MODE) {
 
 					let distance = 0
 					for (let i = 0; i < OVERLAP_COUNT; i++) {
-						if (
-							!_.isNumber(previous[i]) ||
-							!_.isNumber(current[i])
-						) {
-							console.log(previous[i], current[i], i, ris)
-						}
 						distance += previous[i] - current[i]
 					}
 					distance = distance / OVERLAP_COUNT
