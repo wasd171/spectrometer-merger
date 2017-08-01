@@ -5,6 +5,7 @@ const os = require('os')
 const _ = require('lodash')
 const program = require('commander')
 const json = require('./package.json')
+const minimize = require('minimize-golden-section-1d')
 
 const readdir = util.promisify(fs.readdir)
 const readFile = util.promisify((filename, callback) =>
@@ -58,9 +59,9 @@ async function processData(LAMP_MODE) {
 
 	await Promise.all(
 		[...data.entries()].map(async ([ris, map]) => {
-			const rawData = [...map.keys()].sort().map(key => map.get(key))
+			let rawData = [...map.keys()].sort().map(key => map.get(key))
 
-			const formattedData = rawData.reduce((accumulator, array) => {
+			let formattedData = rawData.reduce((accumulator, array) => {
 				if (accumulator.length === 0) {
 					accumulator.push(...array)
 				} else {
@@ -79,6 +80,20 @@ async function processData(LAMP_MODE) {
 
 				return accumulator
 			}, [])
+
+			rawData = [].concat(...rawData)
+
+			function squares(distance) {
+				let sum = 0
+				for (let i = 0; i < rawData.length; i++) {
+					const diff = formattedData[i] + distance - rawData[i]
+					sum += diff * diff
+				}
+				return sum
+			}
+
+			const distance = minimize(squares)
+			formattedData = formattedData.map(value => value + distance)
 
 			const formattedFile = formattedData.join(os.EOL)
 
